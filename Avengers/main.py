@@ -5,7 +5,7 @@ import mediapipe as mp
 import numpy as np
 
 # Cargar la imagen del filtro (máscara completa)
-filter_image = cv2.imread('./spiderman4.png', cv2.IMREAD_UNCHANGED)
+filter_image = cv2.imread('./spiderman.png', cv2.IMREAD_UNCHANGED)
 
 # Inicializar MediaPipe para detección facial y de manos
 mp_face_detection = mp.solutions.face_detection
