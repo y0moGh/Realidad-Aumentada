@@ -1,134 +1,219 @@
-# python10
-# pip install opencv-python mediapipe numpy
 import cv2
 import mediapipe as mp
 import numpy as np
 
 # Cargar imágenes de filtros
 filter_spiderman = cv2.imread('./spiderman.png', cv2.IMREAD_UNCHANGED)
-filter_thanos = cv2.imread('./thanos.png', cv2.IMREAD_UNCHANGED)
+filter_thanos = cv2.imread('./thanos_2.png', cv2.IMREAD_UNCHANGED)
+filter_thanos_2 = cv2.imread('./thanos.png', cv2.IMREAD_UNCHANGED)  # Nuevo guante para la mano derecha
+filter_ironman = cv2.imread('./ironman_mask.png', cv2.IMREAD_UNCHANGED)
+filter_ironman_glove = cv2.imread('./ironman_hand.png', cv2.IMREAD_UNCHANGED)
+filter_thanos_face = cv2.imread('./thanos_face.png', cv2.IMREAD_UNCHANGED)  # Nuevo filtro para la cara de Thanos
+
+# Verificar si las imágenes fueron cargadas correctamente
+if filter_spiderman is None:
+    print("Error: No se pudo cargar la imagen 'spiderman.png'. Verifica la ruta.")
+    raise FileNotFoundError("Falta el filtro Spiderman.")
+if filter_thanos is None:
+    print("Error: No se pudo cargar la imagen 'thanos.png'. Verifica la ruta.")
+    raise FileNotFoundError("Falta el filtro Thanos.")
+if filter_thanos_2 is None:
+    print("Error: No se pudo cargar la imagen 'thanos_2.png'. Verifica la ruta.")
+    raise FileNotFoundError("Falta el filtro Thanos para la mano derecha.")
+if filter_ironman is None:
+    print("Error: No se pudo cargar la imagen 'ironman_mask.png'. Verifica la ruta.")
+    raise FileNotFoundError("Falta la máscara de Ironman.")
+if filter_ironman_glove is None:
+    print("Error: No se pudo cargar la imagen 'ironman_hand.png'. Verifica la ruta.")
+    raise FileNotFoundError("Falta el guante de Ironman.")
+if filter_thanos_face is None:
+    print("Error: No se pudo cargar la imagen 'thanos_face.png'. Verifica la ruta.")
+    raise FileNotFoundError("Falta la cara de Thanos.")
 
 # Inicializar MediaPipe para detección facial y de manos
 mp_face_detection = mp.solutions.face_detection
 mp_hands = mp.solutions.hands
-mp_drawing = mp.solutions.drawing_utils
 
 # Captura de video
 cap = cv2.VideoCapture(0)
 
-def is_love_sign_vertical(landmarks):
-    # Detectar el símbolo de amor en posición vertical
-    thumb_tip = landmarks[4]
+# Configurar ventana en pantalla completa
+cv2.namedWindow('Realidad Aumentada', cv2.WINDOW_NORMAL)
+cv2.setWindowProperty('Realidad Aumentada', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
+# Función para verificar el gesto de Spiderman (índice y meñique extendidos)
+def is_spiderman_gesture(landmarks):
     index_tip = landmarks[8]
+    pinky_tip = landmarks[20]
     middle_tip = landmarks[12]
     ring_tip = landmarks[16]
-    pinky_tip = landmarks[20]
-    return (index_tip.x < thumb_tip.x and pinky_tip.x > thumb_tip.x) and \
-           (index_tip.y < middle_tip.y and pinky_tip.y < ring_tip.y)
+    return (index_tip.y < middle_tip.y and pinky_tip.y < ring_tip.y and 
+            middle_tip.y > index_tip.y and ring_tip.y > pinky_tip.y)
 
+# Función para verificar el gesto del chasquido (pulgar y medio juntos) - Gesto de Thanos
 def is_snap_gesture(landmarks):
-    # Detectar el gesto de chasquido
     thumb_tip = landmarks[4]
-    index_tip = landmarks[8]
     middle_tip = landmarks[12]
-    return (abs(thumb_tip.x - middle_tip.x) < 0.02 and
-            abs(thumb_tip.y - middle_tip.y) < 0.02 and
-            index_tip.y < middle_tip.y)
+    return abs(thumb_tip.x - middle_tip.x) < 0.05 and abs(thumb_tip.y - middle_tip.y) < 0.05
 
+# Función para verificar si la mano está abierta (todos los dedos extendidos) - Gesto de Iron Man
+def is_open_hand_gesture(landmarks):
+    fingers = [8, 12, 16, 20]  # puntas de los dedos índice, medio, anular, meñique
+    for finger_tip in fingers:
+        if landmarks[finger_tip].y > landmarks[finger_tip - 2].y:
+            return False
+    return True
+
+# Función para rotar una imagen
+def rotate_image(image, angle): 
+    (h, w) = image.shape[:2]
+    center = (w // 2, h // 2)
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+    rotated = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_LINEAR)
+    return rotated
+
+# Función para superponer un filtro en una imagen con canal alfa
+def overlay_filter(frame, filter_img, x, y, scale_factor=1.0):
+    filter_h, filter_w = filter_img.shape[:2]
+    frame_h, frame_w = frame.shape[:2]
+    new_w = int(filter_w * scale_factor)
+    new_h = int(filter_h * scale_factor)
+    resized_filter = cv2.resize(filter_img, (new_w, new_h))
+
+    # Verificar si el filtro tiene un canal alfa
+    if resized_filter.shape[2] == 3:
+        # Si no tiene, crear un canal alfa lleno de 255 (opaco)
+        alpha_channel = np.ones((new_h, new_w), dtype=np.uint8) * 255
+        resized_filter = np.dstack([resized_filter, alpha_channel])
+
+    filter_rgb = resized_filter[:, :, :3]
+    filter_alpha = resized_filter[:, :, 3] / 255.0
+
+    for i in range(new_h):
+        for j in range(new_w):
+            if 0 <= x + j < frame_w and 0 <= y + i < frame_h:
+                alpha = filter_alpha[i, j]
+                frame[y + i, x + j] = (alpha * filter_rgb[i, j] + (1 - alpha) * frame[y + i, x + j]).astype(np.uint8)
+
+# Iniciar detección de rostros y manos
 with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detection, \
-     mp_hands.Hands(min_detection_confidence=0.5, max_num_hands=1) as hands:
-    
+     mp_hands.Hands(min_detection_confidence=0.5, max_num_hands=2, model_complexity=1) as hands:  # max_num_hands=2 para detectar ambas manos
+
+    print("Iniciando detección. Presiona 'q' para salir.")
+
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
+            print("Advertencia: No se pudo leer el fotograma de la cámara.")
             break
-        
-        # Convertir la imagen a RGB
+
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        
+
         # Detectar manos
         hand_results = hands.process(frame_rgb)
         active_filter = None
         filter_position = None
         apply_to_face = False
+        ironman_mode = False
+        thanos_face_mode = False  # Para aplicar la cara de Thanos
 
-        if hand_results.multi_hand_landmarks:
-            for hand_landmarks in hand_results.multi_hand_landmarks:
-                if is_love_sign_vertical(hand_landmarks.landmark):
+        # Procesar gestos de las manos
+        if hand_results.multi_hand_landmarks and hand_results.multi_handedness:
+            for idx, hand_landmarks in enumerate(hand_results.multi_hand_landmarks):
+                hand_label = hand_results.multi_handedness[idx].classification[0].label
+                # Detectar gesto de Spiderman
+                if is_spiderman_gesture(hand_landmarks.landmark):
+                    print("Gesto detectado: Spiderman.")
                     active_filter = filter_spiderman
-                    apply_to_face = True
-                    break  # No verificar más si encontramos el filtro
+                    apply_to_face = True  # Se aplicará el filtro al rostro
+                    break
+                # Detectar gesto de Thanos (chasquido)
                 elif is_snap_gesture(hand_landmarks.landmark):
-                    active_filter = filter_thanos
-                    filter_position = hand_landmarks.landmark[0]
+                    print(f"Gesto detectado: Chasquido (Thanos) en la mano {hand_label}.")
+                    if hand_label == 'Left':
+                        active_filter = filter_thanos  # Guante de Thanos para la mano izquierda
+                    else:
+                        active_filter = filter_thanos_2  # Guante alternativo para la mano derecha
+                    filter_position = hand_landmarks.landmark[9]  # Centro aproximado de la palma de la mano
+                    thanos_face_mode = True  # Aplicar cara de Thanos
                     break
 
-        if active_filter is not None:
+                # Detectar gesto de Iron Man (mano abierta)
+                elif is_open_hand_gesture(hand_landmarks.landmark):
+                    print("Gesto detectado: Mano abierta (Iron Man).")
+                    ironman_mode = True
+                    filter_position = hand_landmarks.landmark[9]
+                    break
+
+        # Aplicar filtros de Iron Man (máscara en la cara y guante en la mano)
+        if ironman_mode:
+            # Aplicar máscara de Iron Man al rostro
+            face_results = face_detection.process(frame_rgb)
+            if face_results.detections:
+                for detection in face_results.detections:
+                    bboxC = detection.location_data.relative_bounding_box
+                    ih, iw, _ = frame.shape
+                    x = int(bboxC.xmin * iw)
+                    y = int(bboxC.ymin * ih)
+                    scale_factor = 0.6
+                    overlay_filter(frame, filter_ironman, x - 100, y - 100, scale_factor)
+            else:
+                print("Advertencia: No se detectaron rostros.")
+
+            # Aplicar guante de Iron Man en la mano
+            ih, iw, _ = frame.shape
+            x = int(filter_position.x * iw)
+            y = int(filter_position.y * ih)
+            overlay_filter(frame, filter_ironman_glove, x - filter_ironman_glove.shape[1] // 4, y - filter_ironman_glove.shape[0] // 4, scale_factor=0.5)
+        
+        
+        # Aplicar filtro de Spiderman o Thanos si se detecta el gesto correspondiente
+        elif active_filter is not None:
+            # Si es el filtro de Spiderman, aplicarlo en el rostro
             if apply_to_face:
-                # Detección facial para aplicar el filtro de Spiderman
                 face_results = face_detection.process(frame_rgb)
-                
                 if face_results.detections:
                     for detection in face_results.detections:
                         bboxC = detection.location_data.relative_bounding_box
                         ih, iw, _ = frame.shape
-                        x, y, w, h = int(bboxC.xmin * iw), int(bboxC.ymin * ih), int(bboxC.width * iw), int(bboxC.height * ih)
-                        
-                        scale_factor = 2
-                        new_w, new_h = int(w * scale_factor), int(h * scale_factor)
-                        resized_filter = cv2.resize(filter_spiderman, (new_w, new_h))
-                        filter_height, filter_width = resized_filter.shape[:2]
-                        
-                        filter_x = x - (new_w - w) // 2
-                        filter_y = y - (new_h - h) // 2 - 40
-
-                        if resized_filter.shape[2] == 4:
-                            filter_rgb = resized_filter[:, :, :3]
-                            filter_alpha = resized_filter[:, :, 3] / 255.0
-                        else:
-                            filter_rgb = resized_filter
-                            filter_alpha = np.ones((filter_height, filter_width), dtype=np.float32)
-
-                        for i in range(filter_width):
-                            for j in range(filter_height):
-                                if (0 <= filter_x + i < iw) and (0 <= filter_y + j < ih):
-                                    alpha = filter_alpha[j, i]
-                                    frame[filter_y + j, filter_x + i] = (
-                                        alpha * filter_rgb[j, i] + (1 - alpha) * frame[filter_y + j, filter_x + i]
-                                    )
-            else:
-                # Aplicar el filtro de Thanos en la mano
-                ih, iw, _ = frame.shape
-                x, y = int(filter_position.x * iw), int(filter_position.y * ih)
-                
-                scale_factor = 1.7
-                new_w, new_h = int(100 * scale_factor), int(100 * scale_factor)
-                resized_filter = cv2.resize(filter_thanos, (new_w, new_h))
-                filter_height, filter_width = resized_filter.shape[:2]
-                
-                filter_x = x - filter_width // 2
-                filter_y = y - filter_height // 2 - 50
-
-                if resized_filter.shape[2] == 4:
-                    filter_rgb = resized_filter[:, :, :3]
-                    filter_alpha = resized_filter[:, :, 3] / 255.0
+                        x = int(bboxC.xmin * iw)
+                        y = int(bboxC.ymin * ih)
+                        scale_factor = 0.37
+                        overlay_filter(frame, active_filter, x - 70, y - 100, scale_factor)
                 else:
-                    filter_rgb = resized_filter
-                    filter_alpha = np.ones((filter_height, filter_width), dtype=np.float32)
+                    print("Advertencia: No se detectaron rostros para el filtro de Spiderman.")
+            # Aplicar filtro de Thanos en la mano
+            else:
+                ih, iw, _ = frame.shape
+                x = int(filter_position.x * iw)
+                y = int(filter_position.y * ih)
+                if active_filter is filter_thanos_2:
+                    x -= 100  # Ajusta el valor (en píxeles) para mover más o menos hacia la izquierda
 
-                for i in range(filter_width):
-                    for j in range(filter_height):
-                        if (0 <= filter_x + i < iw) and (0 <= filter_y + j < ih):
-                            alpha = filter_alpha[j, i]
-                            frame[filter_y + j, filter_x + i] = (
-                                alpha * filter_rgb[j, i] + (1 - alpha) * frame[filter_y + j, filter_x + i]
-                            )
-        
+                overlay_filter(frame, active_filter, x - active_filter.shape[1] // 4, y - active_filter.shape[0] // 4, scale_factor=0.7)
+
+        # Aplicar la cara de Thanos si está activada
+        if thanos_face_mode:
+            face_results = face_detection.process(frame_rgb)
+            if face_results.detections:
+                for detection in face_results.detections:
+                    bboxC = detection.location_data.relative_bounding_box
+                    ih, iw, _ = frame.shape
+                    x = int(bboxC.xmin * iw)
+                    y = int(bboxC.ymin * ih)
+                    scale_factor = 0.35
+                    overlay_filter(frame, filter_thanos_face, x - 50, y - 100, scale_factor)
+            else:
+                print("Advertencia: No se detectaron rostros para la cara de Thanos.")
+
         # Mostrar el resultado
         cv2.imshow('Realidad Aumentada', frame)
-        
+
+        # Salir si se presiona 'q'
         if cv2.waitKey(1) & 0xFF == ord('q'):
+            print("Saliendo del programa.")
             break
 
+# Liberar recursos
 cap.release()
 cv2.destroyAllWindows()

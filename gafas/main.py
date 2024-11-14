@@ -1,9 +1,16 @@
-import cv2 # pip install opencv-python
+import cv2  # pip install opencv-python
 import mediapipe as mp
 import numpy as np
 
+# Ruta de la imagen del filtro
+filter_path = 'D:\JuaniSchoolWork\Realidad-Aumentada\gafas\gafas.png'
+
 # Cargar la imagen del filtro (gafas)
-filter_image = cv2.imread('D:/proyecto/gafas.png', cv2.IMREAD_UNCHANGED)
+filter_image = cv2.imread(filter_path, cv2.IMREAD_UNCHANGED)
+
+# Verificar si la imagen fue cargada correctamente
+if filter_image is None:
+    raise FileNotFoundError(f"No se pudo cargar la imagen desde la ruta: {filter_path}")
 
 # Redimensionar el filtro según sea necesario
 filter_image = cv2.resize(filter_image, (150, 50))  # Ajustar tamaño según sea necesario
