@@ -72,28 +72,26 @@ def rotate_image(image, angle):
     rotated = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_LINEAR)
     return rotated
 
-# Función para superponer un filtro en una imagen con canal alfa
 def overlay_filter(frame, filter_img, x, y, scale_factor=1.0):
     filter_h, filter_w = filter_img.shape[:2]
-    frame_h, frame_w = frame.shape[:2]
     new_w = int(filter_w * scale_factor)
     new_h = int(filter_h * scale_factor)
-    resized_filter = cv2.resize(filter_img, (new_w, new_h))
+    resized_filter = cv2.resize(filter_img, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
-    # Verificar si el filtro tiene un canal alfa
-    if resized_filter.shape[2] == 3:
-        # Si no tiene, crear un canal alfa lleno de 255 (opaco)
-        alpha_channel = np.ones((new_h, new_w), dtype=np.uint8) * 255
-        resized_filter = np.dstack([resized_filter, alpha_channel])
+    y1, y2 = max(0, y), min(frame.shape[0], y + new_h)
+    x1, x2 = max(0, x), min(frame.shape[1], x + new_w)
 
-    filter_rgb = resized_filter[:, :, :3]
-    filter_alpha = resized_filter[:, :, 3] / 255.0
+    filter_y1, filter_y2 = max(0, -y), min(new_h, frame.shape[0] - y)
+    filter_x1, filter_x2 = max(0, -x), min(new_w, frame.shape[1] - x)
 
-    for i in range(new_h):
-        for j in range(new_w):
-            if 0 <= x + j < frame_w and 0 <= y + i < frame_h:
-                alpha = filter_alpha[i, j]
-                frame[y + i, x + j] = (alpha * filter_rgb[i, j] + (1 - alpha) * frame[y + i, x + j]).astype(np.uint8)
+    if filter_y1 < filter_y2 and filter_x1 < filter_x2:
+        filter_region = resized_filter[filter_y1:filter_y2, filter_x1:filter_x2]
+        alpha = filter_region[:, :, 3] / 255.0
+        for c in range(3):  # BGR channels
+            frame[y1:y2, x1:x2, c] = (
+                alpha * filter_region[:, :, c] +
+                (1 - alpha) * frame[y1:y2, x1:x2, c]
+            ).astype(np.uint8)
 
 # Iniciar detección de rostros y manos
 with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detection, \
@@ -173,14 +171,18 @@ with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detec
                         x = int(bboxC.xmin * iw)
                         y = int(bboxC.ymin * ih)
                         scale_factor = 0.37
-                        overlay_filter(frame, active_filter, x - 57, y - 100, scale_factor)
+                        overlay_filter(frame, active_filter, x - 55, y - 90, scale_factor)
             # Aplicar filtro de Thanos en la mano
             else:
                 ih, iw, _ = frame.shape
                 x = int(filter_position.x * iw)
                 y = int(filter_position.y * ih)
                 if active_filter is filter_thanos_2:
-                    x -= 100  # Ajusta el valor (en píxeles) para mover más o menos hacia la izquierda
+                    x -= 80  # Ajusta el valor (en píxeles) para mover más o menos hacia la izquierda
+                    y -= 30
+                else:
+                    x -= 10
+                    y -= 20
 
                 overlay_filter(frame, active_filter, x - active_filter.shape[1] // 4, y - active_filter.shape[0] // 4, scale_factor=0.7)
 
