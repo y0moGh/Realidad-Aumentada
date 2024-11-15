@@ -104,7 +104,6 @@ with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detec
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
-            print("Advertencia: No se pudo leer el fotograma de la cámara.")
             break
 
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -123,13 +122,11 @@ with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detec
                 hand_label = hand_results.multi_handedness[idx].classification[0].label
                 # Detectar gesto de Spiderman
                 if is_spiderman_gesture(hand_landmarks.landmark):
-                    print("Gesto detectado: Spiderman.")
                     active_filter = filter_spiderman
                     apply_to_face = True  # Se aplicará el filtro al rostro
                     break
                 # Detectar gesto de Thanos (chasquido)
                 elif is_snap_gesture(hand_landmarks.landmark):
-                    print(f"Gesto detectado: Chasquido (Thanos) en la mano {hand_label}.")
                     if hand_label == 'Left':
                         active_filter = filter_thanos  # Guante de Thanos para la mano izquierda
                     else:
@@ -140,7 +137,6 @@ with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detec
 
                 # Detectar gesto de Iron Man (mano abierta)
                 elif is_open_hand_gesture(hand_landmarks.landmark):
-                    print("Gesto detectado: Mano abierta (Iron Man).")
                     ironman_mode = True
                     filter_position = hand_landmarks.landmark[9]
                     break
@@ -156,9 +152,7 @@ with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detec
                     x = int(bboxC.xmin * iw)
                     y = int(bboxC.ymin * ih)
                     scale_factor = 0.6
-                    overlay_filter(frame, filter_ironman, x - 100, y - 100, scale_factor)
-            else:
-                print("Advertencia: No se detectaron rostros.")
+                    overlay_filter(frame, filter_ironman, x - 57, y - 100, scale_factor)
 
             # Aplicar guante de Iron Man en la mano
             ih, iw, _ = frame.shape
@@ -179,9 +173,7 @@ with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detec
                         x = int(bboxC.xmin * iw)
                         y = int(bboxC.ymin * ih)
                         scale_factor = 0.37
-                        overlay_filter(frame, active_filter, x - 70, y - 100, scale_factor)
-                else:
-                    print("Advertencia: No se detectaron rostros para el filtro de Spiderman.")
+                        overlay_filter(frame, active_filter, x - 57, y - 100, scale_factor)
             # Aplicar filtro de Thanos en la mano
             else:
                 ih, iw, _ = frame.shape
@@ -202,16 +194,13 @@ with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detec
                     x = int(bboxC.xmin * iw)
                     y = int(bboxC.ymin * ih)
                     scale_factor = 0.35
-                    overlay_filter(frame, filter_thanos_face, x - 50, y - 100, scale_factor)
-            else:
-                print("Advertencia: No se detectaron rostros para la cara de Thanos.")
+                    overlay_filter(frame, filter_thanos_face, x + 10, y - 100, scale_factor)
 
         # Mostrar el resultado
         cv2.imshow('Realidad Aumentada', frame)
 
         # Salir si se presiona 'q'
         if cv2.waitKey(1) & 0xFF == ord('q'):
-            print("Saliendo del programa.")
             break
 
 # Liberar recursos
