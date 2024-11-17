@@ -150,7 +150,7 @@ with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detec
                     x = int(bboxC.xmin * iw)
                     y = int(bboxC.ymin * ih)
                     scale_factor = 0.6
-                    overlay_filter(frame, filter_ironman, x - 57, y - 100, scale_factor)
+                    overlay_filter(frame, filter_ironman, x - 90, y - 100, scale_factor)
 
             # Aplicar guante de Iron Man en la mano
             ih, iw, _ = frame.shape
@@ -171,7 +171,7 @@ with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detec
                         x = int(bboxC.xmin * iw)
                         y = int(bboxC.ymin * ih)
                         scale_factor = 0.37
-                        overlay_filter(frame, active_filter, x - 55, y - 90, scale_factor)
+                        overlay_filter(frame, active_filter, x - 85, y - 100, scale_factor)
             # Aplicar filtro de Thanos en la mano
             else:
                 ih, iw, _ = frame.shape
@@ -196,7 +196,7 @@ with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detec
                     x = int(bboxC.xmin * iw)
                     y = int(bboxC.ymin * ih)
                     scale_factor = 0.35
-                    overlay_filter(frame, filter_thanos_face, x + 10, y - 100, scale_factor)
+                    overlay_filter(frame, filter_thanos_face, x - 7, y - 100, scale_factor)
 
         # Mostrar el resultado
         cv2.imshow('Realidad Aumentada', frame)
