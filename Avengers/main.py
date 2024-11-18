@@ -11,10 +11,16 @@ sound_spiderman = pygame.mixer.Sound('./spiderman_sound.wav')
 sound_thanos = pygame.mixer.Sound('./thanos_sound.wav')
 sound_ironman = pygame.mixer.Sound('./ironman_sound.wav')
 
-# Función para reproducir sonido
+# Función para reproducir sonido y gestionar interrupciones
+current_sound = None  # Variable para rastrear el sonido actual
+
 def play_sound(sound):
-    if not pygame.mixer.get_busy():  # Verifica si ya hay un sonido reproduciéndose
-        sound.play()
+    global current_sound
+    if current_sound != sound:  # Si el sonido actual es diferente al solicitado
+        if current_sound:  # Detener el sonido anterior
+            current_sound.stop()
+        sound.play()  # Reproducir el nuevo sonido
+        current_sound = sound  # Actualizar el sonido actual
 
 # Cargar imágenes de filtros
 filter_spiderman = cv2.imread('./spiderman.png', cv2.IMREAD_UNCHANGED)
