@@ -14,13 +14,34 @@ sound_ironman = pygame.mixer.Sound('./ironman_sound.wav')
 # Función para reproducir sonido y gestionar interrupciones
 current_sound = None  # Variable para rastrear el sonido actual
 
+# Sonido que solo se debe reproducir una vez
+unique_sound = sound_thanos  # Cambia 'sound_a' por el sonido específico que quieres reproducir solo una vez
+unique_sound_played = False  # Estado de reproducción de `unique_sound`
+
 def play_sound(sound):
-    global current_sound
-    if current_sound != sound:  # Si el sonido actual es diferente al solicitado
-        if current_sound:  # Detener el sonido anterior
+    global current_sound, unique_sound_played
+
+    # Si el sonido es el `unique_sound` y ya se ha reproducido, no lo reproduzcas de nuevo
+    if sound == unique_sound and unique_sound_played:
+        return  # Salir sin reproducir `unique_sound` de nuevo
+
+    # Cambiar sonido o reiniciar si terminó
+    if current_sound != sound or not pygame.mixer.get_busy():
+        if current_sound:  # Detener el sonido actual si existe
             current_sound.stop()
+        
         sound.play()  # Reproducir el nuevo sonido
         current_sound = sound  # Actualizar el sonido actual
+
+        # Marcar `unique_sound` como reproducido si es el que se acaba de reproducir
+        if sound == unique_sound:
+            unique_sound_played = True
+        # Si se uso otro sonido,`unique_sound` puede ser reproducido otra vez
+        elif sound != unique_sound:
+            unique_sound_played = False
+
+        
+
 
 # Cargar imágenes de filtros
 filter_spiderman = cv2.imread('./spiderman.png', cv2.IMREAD_UNCHANGED)
