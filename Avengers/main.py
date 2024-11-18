@@ -1,6 +1,20 @@
 import cv2
 import mediapipe as mp
 import numpy as np
+import pygame  # Para reproducir sonidos
+
+# Inicializar pygame para manejar sonidos
+pygame.mixer.init()
+
+# Cargar archivos de sonido
+sound_spiderman = pygame.mixer.Sound('./spiderman_sound.wav')
+sound_thanos = pygame.mixer.Sound('./thanos_sound.wav')
+sound_ironman = pygame.mixer.Sound('./ironman_sound.wav')
+
+# Función para reproducir sonido
+def play_sound(sound):
+    if not pygame.mixer.get_busy():  # Verifica si ya hay un sonido reproduciéndose
+        sound.play()
 
 # Cargar imágenes de filtros
 filter_spiderman = cv2.imread('./spiderman.png', cv2.IMREAD_UNCHANGED)
@@ -58,7 +72,7 @@ def is_snap_gesture(landmarks):
 
 # Función para verificar si la mano está abierta (todos los dedos extendidos) - Gesto de Iron Man
 def is_open_hand_gesture(landmarks):
-    fingers = [8, 12, 16, 20]  # puntas de los dedos índice, medio, anular, meñique
+    fingers = [8, 12, 16, 20]
     for finger_tip in fingers:
         if landmarks[finger_tip].y > landmarks[finger_tip - 2].y:
             return False
@@ -95,7 +109,7 @@ def overlay_filter(frame, filter_img, x, y, scale_factor=1.0):
 
 # Iniciar detección de rostros y manos
 with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detection, \
-     mp_hands.Hands(min_detection_confidence=0.5, max_num_hands=2, model_complexity=1) as hands:  # max_num_hands=2 para detectar ambas manos
+     mp_hands.Hands(min_detection_confidence=0.5, max_num_hands=2, model_complexity=1) as hands:
 
     print("Iniciando detección. Presiona 'q' para salir.")
 
@@ -112,7 +126,7 @@ with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detec
         filter_position = None
         apply_to_face = False
         ironman_mode = False
-        thanos_face_mode = False  # Para aplicar la cara de Thanos
+        thanos_face_mode = False
 
         # Procesar gestos de las manos
         if hand_results.multi_hand_landmarks and hand_results.multi_handedness:
@@ -121,27 +135,28 @@ with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detec
                 # Detectar gesto de Spiderman
                 if is_spiderman_gesture(hand_landmarks.landmark):
                     active_filter = filter_spiderman
-                    apply_to_face = True  # Se aplicará el filtro al rostro
+                    apply_to_face = True
+                    play_sound(sound_spiderman)  # Reproducir sonido de Spiderman
                     break
                 # Detectar gesto de Thanos (chasquido)
                 elif is_snap_gesture(hand_landmarks.landmark):
                     if hand_label == 'Left':
-                        active_filter = filter_thanos  # Guante de Thanos para la mano izquierda
+                        active_filter = filter_thanos
                     else:
-                        active_filter = filter_thanos_2  # Guante alternativo para la mano derecha
-                    filter_position = hand_landmarks.landmark[9]  # Centro aproximado de la palma de la mano
-                    thanos_face_mode = True  # Aplicar cara de Thanos
+                        active_filter = filter_thanos_2
+                    filter_position = hand_landmarks.landmark[9]
+                    thanos_face_mode = True
+                    play_sound(sound_thanos)  # Reproducir sonido de Thanos
                     break
-
-                # Detectar gesto de Iron Man (mano abierta)
+                # Detectar gesto de Iron Man
                 elif is_open_hand_gesture(hand_landmarks.landmark):
                     ironman_mode = True
                     filter_position = hand_landmarks.landmark[9]
+                    play_sound(sound_ironman)  # Reproducir sonido de Iron Man
                     break
 
         # Aplicar filtros de Iron Man (máscara en la cara y guante en la mano)
         if ironman_mode:
-            # Aplicar máscara de Iron Man al rostro
             face_results = face_detection.process(frame_rgb)
             if face_results.detections:
                 for detection in face_results.detections:
@@ -152,16 +167,13 @@ with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detec
                     scale_factor = 0.6
                     overlay_filter(frame, filter_ironman, x - 90, y - 100, scale_factor)
 
-            # Aplicar guante de Iron Man en la mano
             ih, iw, _ = frame.shape
             x = int(filter_position.x * iw)
             y = int(filter_position.y * ih)
             overlay_filter(frame, filter_ironman_glove, x - filter_ironman_glove.shape[1] // 4, y - filter_ironman_glove.shape[0] // 4, scale_factor=0.5)
-        
-        
+
         # Aplicar filtro de Spiderman o Thanos si se detecta el gesto correspondiente
         elif active_filter is not None:
-            # Si es el filtro de Spiderman, aplicarlo en el rostro
             if apply_to_face:
                 face_results = face_detection.process(frame_rgb)
                 if face_results.detections:
@@ -172,18 +184,16 @@ with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detec
                         y = int(bboxC.ymin * ih)
                         scale_factor = 0.37
                         overlay_filter(frame, active_filter, x - 85, y - 100, scale_factor)
-            # Aplicar filtro de Thanos en la mano
             else:
                 ih, iw, _ = frame.shape
                 x = int(filter_position.x * iw)
                 y = int(filter_position.y * ih)
                 if active_filter is filter_thanos_2:
-                    x -= 80  # Ajusta el valor (en píxeles) para mover más o menos hacia la izquierda
+                    x -= 80
                     y -= 30
                 else:
                     x -= 10
                     y -= 20
-
                 overlay_filter(frame, active_filter, x - active_filter.shape[1] // 4, y - active_filter.shape[0] // 4, scale_factor=0.7)
 
         # Aplicar la cara de Thanos si está activada
@@ -208,3 +218,4 @@ with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detec
 # Liberar recursos
 cap.release()
 cv2.destroyAllWindows()
+pygame.mixer.quit()
