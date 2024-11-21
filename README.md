@@ -1,7 +1,3 @@
-Aquí tienes un tutorial diseñado para principiantes, explicado paso a paso y utilizando un formato claro en Markdown.
-
----
-
 # Realidad Aumentada - Personajes de Marvel
 
 Este proyecto utiliza tecnologías de realidad aumentada para visualizar personajes de Marvel. Aquí aprenderás a configurarlo y ejecutarlo, incluso si no tienes experiencia previa en programación.
