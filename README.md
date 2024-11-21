@@ -12,7 +12,7 @@ Este proyecto utiliza tecnologías de realidad aumentada para visualizar persona
 Es un programa que usaremos para ejecutar este proyecto. Sigue estos pasos para instalarlo:
 
 - Ve a la página oficial de Python: [python.org/downloads](https://www.python.org/downloads/).  
-- Descarga la versión para tu sistema operativo (elige **Python 3.7 o superior**).
+- Descarga la versión para tu sistema operativo (**Python 3.7 o superior**).
 - Durante la instalación, asegúrate de marcar la casilla **"Add Python to PATH"**.
 
 Para verificar que se instaló correctamente:
@@ -42,25 +42,21 @@ Necesitamos copiar este proyecto en tu computadora.
 
 ---
 
-### 3. Instalar Dependencias (Bibliotecas Necesarias)
+### 3. Instalar Dependencias
 
-Este proyecto necesita ciertas herramientas para funcionar. Vamos a instalarlas fácilmente.
+Este proyecto necesita ciertas herramientas para funcionar. Vamos a instalarlas automáticamente usando el archivo `requirements.txt`.
 
-#### **Método Automático**
 1. Abre tu terminal.
 2. Navega a la carpeta donde extrajiste el proyecto:
    ```bash
    cd ruta/donde/esta/el/proyecto
    ```
-3. Ejecuta el siguiente comando:
+3. Instala las dependencias con el comando:
    ```bash
-   pip install opencv-python numpy mediapipe
+   pip install -r requirements.txt
    ```
 
-Si no funciona, primero asegúrate de que `pip` está actualizado:
-```bash
-python -m pip install --upgrade pip
-```
+Esto instalará automáticamente todas las bibliotecas necesarias para que el proyecto funcione.
 
 ---
 
