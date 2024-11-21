@@ -12,7 +12,7 @@ Este proyecto utiliza tecnologías de realidad aumentada para visualizar persona
 Es un programa que usaremos para ejecutar este proyecto. Sigue estos pasos para instalarlo:
 
 - Ve a la página oficial de Python: [python.org/downloads](https://www.python.org/downloads/).  
-- Descarga la versión para tu sistema operativo (**Python 3.7 - 10.0**).
+- Descarga la versión para tu sistema operativo (**Python 3.7 - 3.10**).
 - Durante la instalación, asegúrate de marcar la casilla **"Add Python to PATH"**.
 
 Para verificar que se instaló correctamente:
